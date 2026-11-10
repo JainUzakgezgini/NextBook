@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover %}
+{% block title %}My shelf | NextBook{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="nb-h1 mb-1">My shelf</h1>
+    <p class="nb-muted mb-0">{{ books|length }} {{ "book" if books|length == 1 else "books" }}. Click a book to see its notes and recap.</p>
+  </div>
+  <a class="btn nb-btn" href="{{ url_for('books.search') }}"><i class="bi bi-plus-lg"></i> Add a book</a>
+</div>
+
+{% if upcoming %}
+  <section class="nb-upcoming mb-4" aria-label="Upcoming releases">
+    <h2 class="nb-h3"><i class="bi bi-hourglass-split"></i> Coming soon</h2>
+    <div class="nb-upcoming-list">
+      {% for b in upcoming[:4] %}
+        <a class="nb-upcoming-item" href="{{ url_for('books.detail', book_id=b.id) }}">
+          <span class="nb-days">{% if b.days_until_release == 0 %}Today{% else %}{{ b.days_until_release }}<small>{{ "day" if b.days_until_release == 1 else "days" }}</small>{% endif %}</span>
+          <span class="nb-upcoming-text">
+            <strong>Next after {{ b.title }}</strong>
+            <span>{{ b.next_release_date.strftime("%d %B %Y") }}</span>
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% if books %}
+  <div class="nb-bookcase">
+    {% for book in books %}
+      <a class="nb-slot" href="{{ url_for('books.detail', book_id=book.id) }}" title="Open {{ book.title }}">
+        <span class="nb-slot-cover">{{ cover(book.title, book.thumbnail_url, book.id|spine_color, "md") }}</span>
+        <span class="nb-tag">
+          <span class="nb-tag-title">{{ book.title }}</span>
+          {% if book.series_index %}
+            <span class="nb-tag-meta">Book {{ book.series_index }}{% if book.total_books_in_series %} of {{ book.total_books_in_series }}{% endif %}</span>
+          {% endif %}
+          <span class="nb-tag-meta"><i class="bi bi-journal-text"></i> {{ book.notes|length }} {{ "note" if book.notes|length == 1 else "notes" }}</span>
+        </span>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="nb-bookcase nb-bookcase-empty">
+    <div class="nb-empty-msg">
+      <i class="bi bi-book"></i>
+      <h2 class="nb-h2">Your shelf is empty</h2>
+      <p>Find the series you're reading and put the first book here.</p>
+      <a class="btn nb-btn" href="{{ url_for('books.search') }}"><i class="bi bi-search"></i> Find a book</a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

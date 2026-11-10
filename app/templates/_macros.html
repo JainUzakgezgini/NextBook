@@ -1,0 +1,31 @@
+{% macro field(f, help=None) %}
+  <div class="mb-3">
+    {{ f.label(class="form-label") }}
+    {{ f(class="form-control" + (" is-invalid" if f.errors else ""), **kwargs) }}
+    {% if f.description and not f.errors %}<div class="form-text">{{ f.description }}</div>{% endif %}
+    {% for error in f.errors %}<div class="invalid-feedback">{{ error }}</div>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro stars(rating, count=None) %}
+  {% if rating %}
+    <span class="nb-stars" title="Google Books rating: {{ rating }} out of 5">
+      {% for i in range(1, 6) %}
+        {% if rating >= i %}<i class="bi bi-star-fill"></i>{% elif rating >= i - 0.5 %}<i class="bi bi-star-half"></i>{% else %}<i class="bi bi-star"></i>{% endif %}
+      {% endfor %}
+      <span class="nb-stars-num">{{ rating }}{% if count %} ({{ count }}){% endif %}</span>
+    </span>
+  {% else %}
+    <span class="nb-muted small">No ratings yet</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro cover(title, url, color, size="md") %}
+  {% if url %}
+    <img class="nb-cover nb-cover-{{ size }}" src="{{ url }}" alt="Cover of {{ title }}" loading="lazy">
+  {% else %}
+    <div class="nb-cover nb-cover-{{ size }} nb-cover-blank" style="--spine: {{ color }}">
+      <span>{{ title }}</span>
+    </div>
+  {% endif %}
+{% endmacro %}

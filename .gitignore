@@ -1,0 +1,17 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Database (created locally, not shared)
+instance/
+*.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

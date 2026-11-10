@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}Create account | NextBook{% endblock %}
+{% block content %}
+<div class="nb-paper nb-auth">
+  <span class="nb-ribbon nb-ribbon-card" aria-hidden="true"></span>
+  <h1 class="nb-h1">Get your library card</h1>
+  <p class="nb-muted">Create an account to start your private shelf. Your notes are only ever visible to you.</p>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.username, autocomplete="username") }}
+    {{ field(form.email, autocomplete="email") }}
+    {{ field(form.password, autocomplete="new-password") }}
+    {{ field(form.confirm, autocomplete="new-password") }}
+    <button class="btn nb-btn w-100 mt-2" type="submit"><i class="bi bi-person-plus"></i> Create account</button>
+  </form>
+  <p class="mt-3 mb-0 nb-muted">Already have an account? <a class="nb-link" href="{{ url_for('auth.login') }}">Log in</a></p>
+</div>
+{% endblock %}

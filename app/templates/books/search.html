@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, stars %}
+{% block title %}Find a book | NextBook{% endblock %}
+{% block content %}
+<section class="nb-catalog">
+  <h1 class="nb-h1">Find a book</h1>
+  <p class="nb-muted">Search the Google Books catalogue by title, author or series.</p>
+  <form class="nb-searchbar" method="get" action="{{ url_for('books.search') }}" role="search">
+    <i class="bi bi-search" aria-hidden="true"></i>
+    <input type="search" name="q" value="{{ query }}" placeholder="For example: Fourth Wing, or Sarah J. Maas" aria-label="Search books" autofocus required>
+    <button class="btn nb-btn" type="submit">Search</button>
+  </form>
+</section>
+
+{% if error %}
+  <div class="alert alert-danger nb-alert mt-4"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
+{% elif query and not results %}
+  <div class="nb-paper mt-4 text-center py-5">
+    <h2 class="nb-h2">No books found for “{{ query }}”</h2>
+    <p class="nb-muted mb-0">Check the spelling, or try only the title or only the author's last name.</p>
+  </div>
+{% elif results %}
+  <p class="nb-muted mt-4 mb-3">{{ results|length }} results for “{{ query }}”</p>
+  <div class="row g-3">
+    {% for r in results %}
+      <div class="col-12 col-lg-6">
+        <article class="nb-result">
+          {{ cover(r.title, r.thumbnail_url, loop.index|spine_color, "sm") }}
+          <div class="nb-result-body">
+            <h2 class="nb-result-title">{{ r.title }}</h2>
+            {% if r.subtitle %}<p class="nb-result-sub">{{ r.subtitle }}</p>{% endif %}
+            <p class="nb-result-meta">{{ r.authors or "Unknown author" }}{% if r.published_date %}, {{ r.published_date|year }}{% endif %}</p>
+            <div class="mb-2">{{ stars(r.average_rating, r.ratings_count) }}</div>
+            {% if r.series_index %}<p class="nb-result-meta"><i class="bi bi-collection"></i> Book {{ r.series_index }} in a series</p>{% endif %}
+            <div class="mt-auto">
+              {% if r.google_id in on_shelf %}
+                <a class="btn btn-sm nb-btn-ghost" href="{{ url_for('books.detail', book_id=on_shelf[r.google_id]) }}"><i class="bi bi-check2"></i> On your shelf, open it</a>
+              {% else %}
+                <form method="post" action="{{ url_for('books.add') }}" class="m-0">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="google_id" value="{{ r.google_id }}">
+                  <button class="btn btn-sm nb-btn" type="submit"><i class="bi bi-plus-lg"></i> Add to my shelf</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% from "_macros.html" import cover, stars, field %}
+{% block title %}{{ book.title }} | NextBook{% endblock %}
+{% block content %}
+<a class="nb-back" href="{{ url_for('main.dashboard') }}"><i class="bi bi-arrow-left"></i> Back to my shelf</a>
+
+<div class="row g-4 g-lg-5 mt-1">
+  <!-- Left: the book -->
+  <aside class="col-lg-4">
+    <div class="nb-paper text-center">
+      {{ cover(book.title, book.thumbnail_url, book.id|spine_color, "lg") }}
+      <h1 class="nb-h1 nb-book-title mt-3">{{ book.title }}</h1>
+      <p class="nb-muted">{{ book.authors or "Unknown author" }}</p>
+      <div class="mb-3">{{ stars(book.average_rating, book.ratings_count) }}</div>
+      <dl class="nb-facts">
+        {% if book.published_date %}<div><dt>Published</dt><dd>{{ book.published_date }}</dd></div>{% endif %}
+        {% if book.page_count %}<div><dt>Pages</dt><dd>{{ book.page_count }}</dd></div>{% endif %}
+        {% if book.series_name %}<div><dt>Series</dt><dd>{{ book.series_name }}</dd></div>{% endif %}
+        {% if book.series_index %}<div><dt>Number</dt><dd>Book {{ book.series_index }}{% if book.total_books_in_series %} of {{ book.total_books_in_series }}{% endif %}</dd></div>{% endif %}
+      </dl>
+      {% if book.description %}
+        <details class="nb-desc text-start">
+          <summary>About this book</summary>
+          <p>{{ book.description }}</p>
+        </details>
+      {% endif %}
+      <form method="post" action="{{ url_for('books.remove', book_id=book.id) }}" class="mt-3"
+            onsubmit="return confirm('Remove this book and all its notes from your shelf? This cannot be undone.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm nb-btn-danger" type="submit"><i class="bi bi-trash3"></i> Remove from shelf</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Right: series, notes, recap -->
+  <div class="col-lg-8">
+
+    <section class="nb-paper mb-4" id="series">
+      <h2 class="nb-h2"><i class="bi bi-hourglass-split"></i> Next book in the series</h2>
+      {% if book.next_release_date %}
+        <div class="nb-countdown" data-release="{{ book.next_release_date.isoformat() }}">
+          <div class="nb-count-tiles">
+            <div><span data-unit="days">-</span><small>days</small></div>
+            <div><span data-unit="hours">-</span><small>hours</small></div>
+            <div><span data-unit="minutes">-</span><small>minutes</small></div>
+            <div><span data-unit="seconds">-</span><small>seconds</small></div>
+          </div>
+          <p class="nb-count-caption">until {{ book.next_release_date.strftime("%d %B %Y") }}</p>
+          <p class="nb-count-out" hidden><i class="bi bi-gift"></i> The next book is out! Read your recap below before you start.</p>
+        </div>
+      {% else %}
+        <p class="nb-muted">Google Books usually doesn't know when the next book comes out. Add the date yourself to start a countdown.</p>
+      {% endif %}
+
+      <details class="nb-edit" {% if series_form.errors or not book.next_release_date %}open{% endif %}>
+        <summary><i class="bi bi-pencil"></i> {% if book.next_release_date or book.series_name %}Edit series info{% else %}Add series info{% endif %}</summary>
+        <form method="post" action="{{ url_for('books.update_series', book_id=book.id) }}" novalidate class="mt-3">
+          {{ series_form.hidden_tag() }}
+          <div class="row g-2">
+            <div class="col-md-6">{{ field(series_form.series_name, placeholder="e.g. The Empyrean") }}</div>
+            <div class="col-md-6">{{ field(series_form.next_release_date) }}</div>
+            <div class="col-6 col-md-3">{{ field(series_form.series_index, min=1) }}</div>
+            <div class="col-6 col-md-3">{{ field(series_form.total_books_in_series, min=1) }}</div>
+          </div>
+          <button class="btn nb-btn" type="submit"><i class="bi bi-check2"></i> Save series info</button>
+        </form>
+      </details>
+    </section>
+
+    <section class="nb-paper nb-journal mb-4" id="notes">
+      <h2 class="nb-h2"><i class="bi bi-journal-text"></i> My private notes</h2>
+      <p class="nb-muted small"><i class="bi bi-lock"></i> Only you can see these. Write what you'd want to remember before the next book.</p>
+
+      <form method="post" action="{{ url_for('books.add_note', book_id=book.id) }}" novalidate class="nb-note-form">
+        {{ note_form.hidden_tag() }}
+        {{ note_form.content.label(class="form-label") }}
+        {{ note_form.content(class="form-control" + (" is-invalid" if note_form.content.errors else ""), rows=4,
+             placeholder="What happened at the end? What questions are still open? How did you feel?") }}
+        {% for e in note_form.content.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+          <div class="form-check m-0">
+            {{ note_form.is_cliffhanger(class="form-check-input") }} {{ note_form.is_cliffhanger.label(class="form-check-label") }}
+          </div>
+          <button class="btn nb-btn" type="submit"><i class="bi bi-plus-lg"></i> Save note</button>
+        </div>
+      </form>
+
+      {% if book.notes %}
+        <ul class="nb-notes list-unstyled">
+          {% for note in book.notes %}
+            <li class="nb-note {% if note.is_cliffhanger %}is-cliff{% endif %}">
+              {% if note.is_cliffhanger %}<span class="nb-cliff-tag"><i class="bi bi-exclamation-lg"></i> Cliffhanger</span>{% endif %}
+              <p>{{ note.content }}</p>
+              <div class="nb-note-foot">
+                <span>{{ note.created_at.strftime("%d %b %Y") }}{% if note.updated_at %} (edited){% endif %}</span>
+                <span class="d-flex gap-1">
+                  <a class="btn btn-sm nb-btn-text" href="{{ url_for('books.edit_note', note_id=note.id) }}"><i class="bi bi-pencil"></i> Edit</a>
+                  <form method="post" action="{{ url_for('books.delete_note', note_id=note.id) }}" class="m-0" onsubmit="return confirm('Delete this note?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm nb-btn-text nb-text-danger" type="submit"><i class="bi bi-trash3"></i> Delete</button>
+                  </form>
+                </span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="nb-empty-line">No notes yet. Your first one goes in the box above.</p>
+      {% endif %}
+    </section>
+
+    <section class="nb-recap" id="recap">
+      <h2 class="nb-h2"><i class="bi bi-stars"></i> Previously on <em>{{ book.title }}</em></h2>
+      {% if recap %}
+        {% if recap.story %}
+          <h3 class="nb-recap-sub"><i class="bi bi-book"></i> The story so far</h3>
+          <div class="nb-recap-text">{{ recap.story }}</div>
+        {% endif %}
+        {% if recap.you %}
+          <h3 class="nb-recap-sub"><i class="bi bi-journal-text"></i> Where you left off</h3>
+          <div class="nb-recap-text nb-recap-you">{{ recap.you }}</div>
+        {% endif %}
+        <p class="nb-recap-meta">Written {% if book.notes %}with your {{ book.notes|length }} {{ "note" if book.notes|length == 1 else "notes" }} {% endif %}on {{ book.recap_created_at.strftime("%d %b %Y") }}. AI summaries can contain mistakes.</p>
+      {% else %}
+        <p class="nb-muted">Forgot what happened? Get a refresher on the story of this book, plus a reminder of where you left off based on your own notes. Nothing from later books is included.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('books.recap', book_id=book.id) }}" class="nb-recap-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn nb-btn-brass" type="submit">
+          <i class="bi bi-stars"></i> {% if recap %}Write a new recap{% else %}Write my recap{% endif %}
+        </button>
+        {% if not book.notes %}<span class="nb-muted small">Tip: add notes first to get a personal part too.</span>{% endif %}
+      </form>
+      <p class="nb-fineprint"><i class="bi bi-info-circle"></i> To write the recap, this book's title, its description and your notes for it are sent to Google Gemini. Nothing else from your account is shared.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Live countdown to the next release (midnight, local time)
+  document.querySelectorAll(".nb-countdown").forEach(function (box) {
+    var parts = box.dataset.release.split("-");
+    var target = new Date(parts[0], parts[1] - 1, parts[2]);
+    function tick() {
+      var diff = target - new Date();
+      if (diff <= 0) {
+        box.querySelector(".nb-count-tiles").hidden = true;
+        box.querySelector(".nb-count-caption").hidden = true;
+        box.querySelector(".nb-count-out").hidden = false;
+        return;
+      }
+      var s = Math.floor(diff / 1000);
+      box.querySelector('[data-unit="days"]').textContent = Math.floor(s / 86400);
+      box.querySelector('[data-unit="hours"]').textContent = Math.floor(s % 86400 / 3600);
+      box.querySelector('[data-unit="minutes"]').textContent = Math.floor(s % 3600 / 60);
+      box.querySelector('[data-unit="seconds"]').textContent = s % 60;
+      setTimeout(tick, 1000);
+    }
+    tick();
+  });
+
+  // Show a "working" state while Gemini writes, so nobody clicks twice
+  document.querySelectorAll(".nb-recap-form").forEach(function (form) {
+    form.addEventListener("submit", function () {
+      var btn = form.querySelector("button");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Writing your recap...';
+    });
+  });
+</script>
+{% endblock %}

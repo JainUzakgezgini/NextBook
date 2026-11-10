@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="nb-hero row align-items-center g-5">
+  <div class="col-lg-6">
+    <h1 class="nb-display">Remember where the last book left you.</h1>
+    <p class="nb-lead">NextBook is a private reading journal for book series. Log the cliffhangers, the questions and how you felt when you closed the book. When the sequel arrives, AI brings you back up to speed on the story and on where you left off.</p>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn nb-btn btn-lg" href="{{ url_for('auth.register') }}"><i class="bi bi-person-plus"></i> Create free account</a>
+      <a class="btn nb-btn-ghost btn-lg" href="{{ url_for('auth.login') }}">Log in</a>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="nb-showcase" aria-hidden="true">
+      <div class="nb-showcase-books">
+        <span class="nb-spine" style="--h:88%;--c:#7B2D26">The Long Wait</span>
+        <span class="nb-spine" style="--h:96%;--c:#1F4A3C">Book Two</span>
+        <span class="nb-spine nb-spine-thin" style="--h:78%;--c:#8C6A2F">Interlude</span>
+        <span class="nb-spine" style="--h:92%;--c:#2E3F5C">The Cliffhanger</span>
+        <span class="nb-spine nb-spine-lean" style="--h:84%;--c:#5A3B5C">Previously On</span>
+        <span class="nb-spine nb-spine-ghost" style="--h:90%">Coming soon</span>
+      </div>
+      <div class="nb-plank"></div>
+    </div>
+  </div>
+</section>
+
+<section class="nb-steps">
+  <h2 class="nb-h2 mb-4">How it works</h2>
+  <ol class="row g-4 list-unstyled">
+    <li class="col-md-4">
+      <div class="nb-step"><span class="nb-step-num">1</span><i class="bi bi-search"></i>
+        <h3>Find your series</h3><p>Search any book and put it on your shelf. Add the date the next book comes out and watch the countdown.</p></div>
+    </li>
+    <li class="col-md-4">
+      <div class="nb-step"><span class="nb-step-num">2</span><i class="bi bi-journal-text"></i>
+        <h3>Write private notes</h3><p>Log cliffhangers, unanswered questions and raw reactions. No one else can see them, ever.</p></div>
+    </li>
+    <li class="col-md-4">
+      <div class="nb-step"><span class="nb-step-num">3</span><i class="bi bi-stars"></i>
+        <h3>Get your recap</h3><p>Before the sequel, AI refreshes the story of the last book and reminds you where you left off, using your notes.</p></div>
+    </li>
+  </ol>
+</section>
+{% endblock %}
