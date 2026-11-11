@@ -64,3 +64,46 @@ even though the internet connection and the API key worked.
 40-second limit in the code. The code reported every network problem, including a timeout, as "couldn't reach".
 **Solution:** Raised the time limit to 90 seconds, made a timeout automatically fall back to the faster
 Flash-Lite model, and added log messages in the terminal so the real cause is visible next time.
+
+## Deployment (AWS EC2)
+
+**Problem:** Connecting to the server with the "EC2 Instance Connect" shortcut would have failed.
+**Cause:** The shortcut uses the username `ec2-user`, which only exists on Amazon Linux. The server runs Ubuntu.
+**Solution:** Used the full Connect page and changed the username to `ubuntu`.
+
+**Problem (prevented):** Gunicorn stops any request that takes more than 30 seconds by default,
+but an AI recap can take longer.
+**Solution:** Started Gunicorn with `--timeout 120` and set `proxy_read_timeout 120s` in Nginx,
+because the same kind of timeout had already happened during local testing.
+
+**Problem:** The site only worked over plain HTTP on an IP address, so passwords were sent unencrypted
+and the browser showed "Not secure".
+**Solution:** Added an Elastic IP (a fixed address, because the normal public IP changes when the
+server restarts), a free DuckDNS subdomain (nextbook.duckdns.org) and a free Let's Encrypt
+certificate with Certbot, which also redirects HTTP to HTTPS and renews itself automatically.
+After that, login cookies were set to be sent over HTTPS only (`COOKIE_SECURE=1` on the server).
+
+**Problem:** Chrome showed a red "Dangerous" label and a "Check your passwords" warning on the live site.
+**Diagnosis:** Google's Safe Browsing site status report showed no data for the domain, so it was not
+on a blocklist. The page itself loaded normally; the warning appeared only after typing a password that
+was also used on other sites. Chrome flags reused passwords typed on new, unknown domains.
+**Solution:** Created the test account with a unique password used nowhere else.
+
+**Problem:** On the server, "Write my recap" failed with "Model 'gemini-2.5-flash' isn't available",
+although the same code worked locally the day before.
+**Diagnosis:** A test script on the server listed the models available to the API key and timed each one:
+- `gemini-flash-latest` (an alias for the newest Flash model) and `gemini-3.8-flash` / `gemini-3.7-flash`
+  did not answer within 30 seconds on the free tier
+- `gemini-2.5-flash` returned 404: "no longer available to new users"
+- `gemini-3.6-flash` answered in 1.5 seconds, `gemini-3.5-flash-lite` in 1.0 second
+**Solution:** Set `GEMINI_MODEL=gemini-3.6-flash` in `.env`, replaced the fallback list with models that
+were measured to work, limited each attempt to 40 seconds with an 85-second total budget (below
+Gunicorn's 120-second limit), and made the error message list what happened with every model.
+Lesson: "latest" aliases are convenient but unpredictable in production; a pinned, tested model is safer.
+
+**Problem:** AWS warned that SSH (port 22) was open to the whole internet.
+**Solution:** After setup was finished, limited SSH to the EC2 Instance Connect IP range for
+eu-north-1 (13.48.4.200/30). Browser connections still work; everyone else can't reach the port.
+
+**Check:** Installed all Ubuntu security updates and rebooted the server. The app came back
+automatically without any manual step, because it runs as an enabled systemd service.

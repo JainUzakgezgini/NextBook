@@ -1,0 +1,16 @@
+# /etc/systemd/system/nextbook.service
+# Runs the Flask app with gunicorn and restarts it automatically (also after a reboot).
+[Unit]
+Description=NextBook Flask app (gunicorn)
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/nextbook
+Environment="PATH=/home/ubuntu/nextbook/venv/bin"
+# --timeout 120: AI recaps can take longer than gunicorn's default 30 seconds
+ExecStart=/home/ubuntu/nextbook/venv/bin/gunicorn --workers 2 --timeout 120 --bind 127.0.0.1:8000 run:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

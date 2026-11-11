@@ -18,3 +18,11 @@ class Config:
         "sqlite:///" + os.path.join(BASE_DIR, "instance", "nextbook.db"),
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Cookies: never readable by JavaScript, not sent with cross-site requests.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    # On the HTTPS server set COOKIE_SECURE=1 in .env, so login cookies are only sent over HTTPS.
+    # Leave it off locally (http://127.0.0.1), otherwise logging in won't work.
+    SESSION_COOKIE_SECURE = REMEMBER_COOKIE_SECURE = os.environ.get("COOKIE_SECURE") == "1"
+    REMEMBER_COOKIE_HTTPONLY = True

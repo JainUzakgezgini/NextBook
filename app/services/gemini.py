@@ -1,14 +1,19 @@
 """Generates the private 'Previously on...' recap with the Gemini API."""
 import json
+import time
 
 import requests
 from flask import current_app
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
-# Tried in order. The '-latest' aliases always point to Google's current Flash models,
-# so the app keeps working when an older model name is retired.
-FALLBACK_MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"]
+# Tried in order after GEMINI_MODEL from .env. Chosen from a speed test on the free tier
+# (Nov 2026): the "gemini-flash-latest" alias pointed to models that didn't answer within 30 s,
+# and gemini-2.5-flash is no longer available to new users. See DEVLOG.md.
+FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"]
+
+PER_MODEL_TIMEOUT = 40  # seconds to wait for one model
+TOTAL_BUDGET = 85       # stop trying new models after this; gunicorn kills requests at 120 s
 
 
 class RecapError(Exception):
@@ -73,37 +78,46 @@ def generate_recap(book, notes):
         "contents": [{"role": "user", "parts": [{"text": build_prompt(book, notes)}]}],
         "generationConfig": {"temperature": 0.5, "maxOutputTokens": 3000, "responseMimeType": "application/json"},
     }
-    last_error = "Gemini didn't answer."
+    attempts = []  # what happened with each model, shown in the error and the server log
+    started = time.monotonic()
     for model in dict.fromkeys(models):  # removes duplicates, keeps order
+        if attempts and time.monotonic() - started > TOTAL_BUDGET - PER_MODEL_TIMEOUT:
+            break  # not enough time left for another full attempt
         try:
             resp = requests.post(
                 API_URL.format(model=model),
                 headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
                 json=body,
-                timeout=90,
+                timeout=PER_MODEL_TIMEOUT,
             )
         except requests.Timeout:
-            # Thinking models can be slow on long answers: try the next (faster) model
-            current_app.logger.warning("Gemini model %s timed out", model)
-            last_error = "Gemini took too long to answer. Try again in a moment."
+            current_app.logger.warning("Gemini model %s timed out after %s s", model, PER_MODEL_TIMEOUT)
+            attempts.append(f"{model}: timed out")
             continue
         except requests.RequestException as exc:
             current_app.logger.warning("Gemini request failed: %r", exc)
             raise RecapError("Couldn't reach Gemini. Check your internet connection and try again.")
-        current_app.logger.info("Gemini model %s answered with status %s", model, resp.status_code)
 
-        if resp.status_code == 404:  # model name retired or unknown: try the next one
-            last_error = f"Model '{model}' isn't available."
+        message = ""
+        if not resp.ok and resp.content:
+            try:
+                message = resp.json().get("error", {}).get("message", "")
+            except ValueError:
+                message = resp.text[:200]
+        if not resp.ok:
+            current_app.logger.warning("Gemini model %s answered %s: %s", model, resp.status_code, message[:300])
+
+        if resp.status_code == 404:  # model retired or unknown: try the next one
+            attempts.append(f"{model}: not available")
             continue
         if resp.status_code == 429:
             raise RecapError("The free Gemini quota is used up for now. Wait a minute (or until tomorrow) and try again.")
         if resp.status_code in (400, 401, 403):
-            message = resp.json().get("error", {}).get("message", "") if resp.content else ""
             if "API key" in message or resp.status_code in (401, 403):
                 raise RecapError("Gemini rejected the API key. Check GEMINI_API_KEY in the .env file.")
             raise RecapError(f"Gemini couldn't process the request: {message[:200]}")
         if not resp.ok:
-            last_error = f"Gemini error {resp.status_code}."
+            attempts.append(f"{model}: error {resp.status_code}")
             continue
 
         data = resp.json()
@@ -115,5 +129,6 @@ def generate_recap(book, notes):
         parsed = parse_recap(text)
         if parsed and parsed["story"] and not parsed["story"].lstrip().startswith("{"):
             return json.dumps(parsed, ensure_ascii=False)
-        last_error = "Gemini returned an incomplete answer. Try again."
-    raise RecapError(last_error)
+        attempts.append(f"{model}: incomplete answer")
+
+    raise RecapError("Gemini couldn't write the recap. Tried " + "; ".join(attempts) + ". Try again in a moment.")

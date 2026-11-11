@@ -5,6 +5,8 @@ when you finish a book, see a countdown to the next release, and get a personal
 AI-written "Previously on..." recap before the sequel: what happened in the story,
 and where you left off emotionally, based on your own notes.
 
+**Live app:** https://nextbook.duckdns.org
+
 **Stack:** Python, Flask, SQLite (SQLAlchemy), Flask-Login, Flask-WTF, Bootstrap 5,
 Google Books API, Google Gemini API, AWS EC2.
 
@@ -35,6 +37,12 @@ Open http://127.0.0.1:5000 in your browser.
 
 On macOS / Linux use `python3`, `source venv/bin/activate` and `cp` instead.
 
+## Deployment
+
+The app runs on an AWS EC2 server (Ubuntu 24.04, t3.micro, Stockholm) behind Nginx and
+Gunicorn, with a free DuckDNS domain and a Let's Encrypt HTTPS certificate.
+See [deploy/DEPLOY.md](deploy/DEPLOY.md) for the architecture, setup steps and update workflow.
+
 ## Project structure
 
 ```
@@ -51,6 +59,7 @@ nextbook/
 │   │   └── gemini.py        # Gemini API client and prompt
 │   ├── templates/           # HTML (Jinja2)
 │   └── static/              # CSS, fonts, Bootstrap (served locally)
+├── deploy/                  # server config: systemd service, nginx, deployment guide
 ├── config.py                # settings, reads secrets from .env
 ├── run.py                   # development entry point
 └── requirements.txt
