@@ -31,8 +31,10 @@ cd nextbook
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-nano .env                      # SECRET_KEY, GEMINI_API_KEY, GOOGLE_BOOKS_API_KEY,
-                               # GEMINI_MODEL, COOKIE_SECURE=1 (never committed to Git)
+nano .env                      # SECRET_KEY, GEMINI_API_KEY, GOOGLE_BOOKS_API_KEY, GEMINI_MODEL,
+                               # MAIL_USERNAME, MAIL_PASSWORD, COOKIE_SECURE=1, BEHIND_PROXY=1,
+                               # APP_BASE_URL=https://nextbook.duckdns.org (never committed to Git)
+chmod 600 .env                 # only the ubuntu user can read the keys
 sudo cp deploy/nextbook.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now nextbook
@@ -69,3 +71,13 @@ sudo systemctl status nextbook --no-pager      # is the app running?
 sudo journalctl -u nextbook -n 50 --no-pager   # latest app logs and warnings
 sudo certbot renew --dry-run                   # test certificate renewal
 ```
+
+## Server security checklist
+
+- [x] SSH only from the EC2 Instance Connect range (13.48.4.200/30)
+- [x] HTTPS with Let's Encrypt, automatic renewal, HTTP redirects to HTTPS
+- [x] `.env` readable only by the `ubuntu` user (`chmod 600 .env`)
+- [x] Nginx version hidden (`server_tokens off`), request size limited
+- [x] Automatic security updates (`unattended-upgrades`)
+- [x] App runs as a normal user, not root, and only listens on 127.0.0.1
+- [x] Budget alarm in AWS

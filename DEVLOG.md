@@ -107,3 +107,52 @@ eu-north-1 (13.48.4.200/30). Browser connections still work; everyone else can't
 
 **Check:** Installed all Ubuntu security updates and rebooted the server. The app came back
 automatically without any manual step, because it runs as an enabled systemd service.
+
+## Improvements after the first release
+
+**Request from the supervisor:** keep improving the app, add "forgot password", and pay more attention
+to security, because modern AI tools make it easy to find and attack weak websites.
+
+**Security review:** checked the code with a static analysis tool (bandit: no issues) and the
+libraries with pip-audit, wrote automated tests that try common attacks, and compared the app
+with common web risks (OWASP Top 10).
+
+**Problem:** pip-audit found 2 known vulnerabilities in `requests 2.32.3`.
+**Solution:** updated to `requests 2.34.2`. pip-audit now reports no known vulnerabilities.
+
+**Problem:** the login page had no limit, so a script could try thousands of passwords.
+**Solution:** added Flask-Limiter: 5 tries per minute and 30 per hour per IP address. Limits also on
+register, forgot password, reset password, book search and the AI recap (so nobody can use up the
+free Gemini and Google Books quotas). Behind Nginx, every visitor first looked like 127.0.0.1, so one
+attacker would have blocked everyone. Fixed with `ProxyFix`, which reads the real IP from Nginx.
+
+**Problem:** the "next" link after login only blocked `https://...` and `//...`, but `/\evil.com`
+slipped through, and browsers treat that as another website (open redirect).
+**Solution:** only paths that start with a single `/` and contain no backslash are accepted.
+
+**Problem:** the pages had no security headers.
+**Solution:** added a Content Security Policy (only our own scripts run), anti-clickjacking,
+nosniff, Referrer-Policy, HSTS on HTTPS, and `Cache-Control: no-store` on private pages so notes
+don't stay in the browser after logout. Inline JavaScript was moved to `static/js/app.js` so the
+policy can block all inline scripts.
+
+**New feature: forgot password.**
+- The reset link is a signed token (itsdangerous) that expires after 30 minutes.
+- It contains a fingerprint of the current password hash, so it works only once: after the password
+  changes, the old link stops working. The same fingerprint is now part of the login cookie, so a
+  password change also logs the account out on every other device.
+- The page gives the same answer whether the e-mail has an account or not, and sends the e-mail in the
+  background, so nobody can find out which addresses are registered.
+- The link is built from `APP_BASE_URL` in `.env`, not from the request, so a forged Host header can't
+  send people to an attacker's site ("password reset poisoning").
+- E-mail is sent with Gmail SMTP and an App Password (free). Locally, without e-mail settings, the link
+  is printed in the terminal.
+
+**Other hardening:** passwords limited to 128 characters (very long passwords make hashing slow), request
+bodies limited to 1 MB, "Keep me logged in" shortened from 1 year to 14 days, friendly error pages
+(404, 429, 500), and the live site refuses to start if SECRET_KEY is missing or too short.
+
+**Testing:** 19 automated checks passed: XSS, other users' data (IDOR), CSRF, large requests, security
+headers, open redirect, account enumeration, Host header poisoning, single-use and expiring reset links,
+logout on other devices after reset, login rate limit, per-IP limits behind Nginx, AI recap limit,
+and the secret key check.

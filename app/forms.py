@@ -28,7 +28,7 @@ class RegisterForm(FlaskForm):
     password = PasswordField(
         "Password",
         description="At least 8 characters.",
-        validators=[DataRequired(), Length(min=8, message="Use at least 8 characters.")],
+        validators=[DataRequired(), Length(min=8, max=128, message="Use 8 to 128 characters.")],
     )
     confirm = PasswordField(
         "Repeat password", validators=[DataRequired(), EqualTo("password", message="Passwords don't match.")]
@@ -46,9 +46,30 @@ class RegisterForm(FlaskForm):
 
 class LoginForm(FlaskForm):
     username = StringField("Username", validators=[DataRequired()])
-    password = PasswordField("Password", validators=[DataRequired()])
+    password = PasswordField("Password", validators=[DataRequired(), Length(max=128)])
     remember = BooleanField("Keep me logged in")
     submit = SubmitField("Log in")
+
+
+class ForgotPasswordForm(FlaskForm):
+    email = EmailField(
+        "Email",
+        description="The e-mail address you used when you created your account.",
+        validators=[DataRequired(), Email(), Length(max=120)],
+    )
+    submit = SubmitField("Send reset link")
+
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField(
+        "New password",
+        description="At least 8 characters.",
+        validators=[DataRequired(), Length(min=8, max=128, message="Use 8 to 128 characters.")],
+    )
+    confirm = PasswordField(
+        "Repeat new password", validators=[DataRequired(), EqualTo("password", message="Passwords don't match.")]
+    )
+    submit = SubmitField("Save new password")
 
 
 class SeriesForm(FlaskForm):

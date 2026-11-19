@@ -13,6 +13,7 @@ Google Books API, Google Gemini API, AWS EC2.
 ## Features
 
 - Account registration and login (hashed passwords, CSRF-protected forms)
+- Forgot password: a single-use reset link by e-mail that expires after 30 minutes
 - Book search through the Google Books API, with a 24-hour local cache
 - A personal bookshelf with series number, total books and next release date
 - Live countdown to the next book in a series
@@ -64,6 +65,24 @@ nextbook/
 ├── run.py                   # development entry point
 └── requirements.txt
 ```
+
+## Security
+
+| Risk | Protection |
+| --- | --- |
+| Password guessing | Rate limits: 5 login tries per minute per IP, limits on register, forgot password and reset |
+| Stolen passwords from the database | Passwords stored only as salted scrypt hashes |
+| Reading other users' data | Every book and note query checks the owner; others get 404 |
+| Cross-site request forgery | CSRF token on every form |
+| Script injection (XSS) | Jinja auto-escaping + strict Content Security Policy (no inline scripts) |
+| Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'` |
+| Open redirect after login | Only links inside the site are accepted |
+| Reset link abuse | Signed token, 30 minutes, works once, built from a fixed site address |
+| Stolen session after a password change | Changing the password logs the account out on every device |
+| Cookie theft | HttpOnly, SameSite=Lax, Secure on HTTPS, HSTS |
+| Using up the free API quotas | Per-user limits on search and AI recap |
+| Weak secret key on the live site | The app refuses to start with the example key |
+| Vulnerable libraries | Checked with `pip-audit` (no known vulnerabilities) |
 
 ## Privacy
 

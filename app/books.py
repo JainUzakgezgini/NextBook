@@ -3,12 +3,17 @@ from datetime import datetime, timezone
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from app import db
+from app import db, limiter
 from app.forms import NoteForm, SeriesForm
 from app.models import Book, Note
 from app.services import gemini, google_books
 
 bp = Blueprint("books", __name__)
+
+
+def per_user():
+    """Rate-limit key: the logged-in account (so one user can't use up everyone's quota)."""
+    return f"user:{current_user.id}"
 
 
 def owned_book(book_id):
@@ -28,6 +33,7 @@ def owned_note(note_id):
 
 @bp.route("/search")
 @login_required
+@limiter.limit("30 per minute; 300 per day", key_func=per_user)  # protects the Google Books quota
 def search():
     query = request.args.get("q", "").strip()
     results, error = [], None
@@ -47,6 +53,7 @@ def search():
 
 @bp.route("/books/add", methods=["POST"])
 @login_required
+@limiter.limit("30 per minute", key_func=per_user)
 def add():
     google_id = request.form.get("google_id", "")
     existing = db.session.scalar(db.select(Book).filter_by(user_id=current_user.id, google_id=google_id))
@@ -149,6 +156,7 @@ def delete_note(note_id):
 
 @bp.route("/books/<int:book_id>/recap", methods=["POST"])
 @login_required
+@limiter.limit("3 per minute; 20 per day", key_func=per_user)  # protects the free Gemini quota
 def recap(book_id):
     book = owned_book(book_id)
     try:

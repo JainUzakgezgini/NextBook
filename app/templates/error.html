@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | NextBook{% endblock %}
+{% block content %}
+<div class="nb-paper nb-auth text-center">
+  <span class="nb-ribbon nb-ribbon-card" aria-hidden="true"></span>
+  <p class="nb-muted mb-1">Error {{ code }}</p>
+  <h1 class="nb-h1">{{ title }}</h1>
+  <p class="nb-muted">{{ text }}</p>
+  <a class="btn nb-btn mt-2" href="{{ url_for('main.index') }}"><i class="bi bi-house"></i> Back to NextBook</a>
+</div>
+{% endblock %}
