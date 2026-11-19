@@ -156,3 +156,13 @@ bodies limited to 1 MB, "Keep me logged in" shortened from 1 year to 14 days, fr
 headers, open redirect, account enumeration, Host header poisoning, single-use and expiring reset links,
 logout on other devices after reset, login rate limit, per-IP limits behind Nginx, AI recap limit,
 and the secret key check.
+
+**Problem:** On the live site, saving a new password on the reset page always showed "Error 400".
+It worked locally.
+**Cause:** To keep the secret token in the URL from leaking, the reset page told the browser to send no
+"Referer" header at all (`no-referrer`). But on HTTPS, Flask-WTF's CSRF protection checks that the Referer
+comes from our own site, so a missing Referer is rejected. Locally the site runs on HTTP, where this check
+is off, so the tests didn't catch it.
+**Solution:** changed the page to `same-origin`: the Referer is sent only to our own site (the token still
+never goes to other sites), so the CSRF check passes. Reproduced with a real HTTPS test server and a
+browser before and after the fix. Lesson: test security features in the same setup as production.
